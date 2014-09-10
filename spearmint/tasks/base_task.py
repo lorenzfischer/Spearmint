@@ -254,6 +254,8 @@ class BaseTask(object):
 
             if param['type'] == 'float':
                 format_str = '%s%-12.12s  %-9.9s  %-12f\n'
+            elif param['type'] == 'enum':
+                format_str = '%s%-12.12s  %-9.9s  %-12s\n'
             else:
                 format_str = '%s%-12.12s  %-9.9s  %-12d\n'
 
@@ -261,7 +263,7 @@ class BaseTask(object):
                 if i == 0:
                     sys.stderr.write(format_str % (indentation, param_name, param['type'], param['values'][i]))
                 else:
-                    sys.stderr.write(format_str % (indentation, '',                        param['values'][i]))
+                    sys.stderr.write(format_str % (indentation, ''        , ''           , param['values'][i]))
 
     # Converts a vector in input space to the corresponding dict of params
     def paramify(self, data_vector):
