@@ -197,7 +197,9 @@ def _kumaraswamy_pdf(x, a, b):
     return Px
 
 def _kumaraswamy_cdf(x, a, b):
-    Cx = 1.0 - (1.0 - x**a)**b
+    inner = x**a
+    outer = (1.0 - inner)**b
+    Cx = 1.0 - outer
     return Cx
 
 def truncate_inputs(func):
