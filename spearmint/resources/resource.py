@@ -302,7 +302,7 @@ class Resource(object):
         if self.numPending(jobs) >= self.max_concurrent:
             return False
         
-        if self.numComplete(jobs) >= self.max_finished_jobs:
+        if self.max_finished_jobs > 0 and self.numComplete(jobs) >= self.max_finished_jobs:
             return False
 
         return True 
