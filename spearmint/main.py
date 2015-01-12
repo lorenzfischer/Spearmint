@@ -272,18 +272,21 @@ def main():
             # Note: I chose to fill up one resource and them move on to the next
             # You could also do it the other way, by changing "while" to "if" here
 
+            # Remove any broken jobs from pending.
+            remove_broken_jobs(db, jobs, experiment_name, resources)
+
             while resource.acceptingJobs(jobs):
 
                 # Load jobs from DB 
                 # (move out of one or both loops?) would need to pass into load_tasks
                 jobs = load_jobs(db, experiment_name)
-                
-                # Remove any broken jobs from pending.
-                remove_broken_jobs(db, jobs, experiment_name, resources)
 
                 # Get a suggestion for the next job
                 suggested_job = get_suggestion(chooser, resource.tasks, db, expt_dir, options, resource_name)
-    
+                if not suggested_job:
+                    print("No more jobs to be run. Exiting the optimizer...")
+                    return  # return from main
+
                 # Submit the job to the appropriate resource
                 process_id = resource.attemptDispatch(experiment_name, suggested_job, db_address, expt_dir)
 
@@ -343,6 +346,12 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
 
     # Load the tasks from the database -- only those in task_names!
     task_group = load_task_group(db, options, task_names)
+
+    # if we have enough 'completed' jobs for the task, we return null to signal that we're done
+    if len(task_names) > 1:
+        raise RuntimeError("Currently we only support one task") # todo lf: fix this
+    if len(task_group.inputs) >= task_options[task_names[0]][u'max-finished-jobs']:
+        return None
 
     # Load the model hypers from the database.
     hypers = load_hypers(db, experiment_name)
