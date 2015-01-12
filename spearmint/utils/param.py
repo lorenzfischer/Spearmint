@@ -225,12 +225,20 @@ class Param(object):
 
     def __init__(self, initial_value, prior=priors.NoPrior(), name="Unnamed"):
         self.initial_value = copy.copy(initial_value)
-        self.value         = initial_value
         self.name          = name
+        self.value         = initial_value
         self.prior         = prior
         self.isArray       = hasattr(initial_value, "shape") and initial_value.shape != ()
         # If the initial value is in a numpy array, keep it as a numpy array later on
         # If the initial value is a single number (float), respect that later on
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
 
     def set_value(self, new_value):
         self.value = new_value
