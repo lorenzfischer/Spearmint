@@ -224,6 +224,7 @@ def truncate_inputs(func):
     return inner
 
 class KumarWarp(AbstractTransformation):
+
     def __init__(self, num_dims, alpha=None, beta=None, name="BetaWarp"):
         self.name     = name
         self.num_dims = num_dims
@@ -244,6 +245,22 @@ class KumarWarp(AbstractTransformation):
         self.beta   = beta if beta is not None else default_beta
 
         assert self.alpha.value.shape[0] == self.num_dims and self.beta.value.shape[0] == self.num_dims
+
+    @property
+    def alpha(self):
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, alpha):
+        self._alpha = alpha
+
+    @property
+    def beta(self):
+        return self._beta
+
+    @beta.setter
+    def beta(self, beta):
+        self._beta = beta
 
     @property
     def hypers(self):
