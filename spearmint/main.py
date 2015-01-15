@@ -350,7 +350,10 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
     # if we have enough 'completed' jobs for the task, we return null to signal that we're done
     if len(task_names) > 1:
         raise RuntimeError("Currently we only support one task") # todo lf: fix this
-    if len(task_group.inputs) >= task_options[task_names[0]][u'max-finished-jobs']:
+    numCompleted = len(task_group.inputs)
+    numMaxJobs = task_options[task_names[0]][u'max-finished-jobs']
+    sys.stderr.write('\n%d/%d jobs completed.\n' % (numCompleted, numMaxJobs))
+    if numCompleted >= numMaxJobs:
         return None
 
     # Load the model hypers from the database.
