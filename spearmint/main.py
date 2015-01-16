@@ -278,11 +278,10 @@ def main():
             while resource.acceptingJobs(jobs):
 
                 # Load jobs from DB 
-                # (move out of one or both loops?) would need to pass into load_tasks
-                jobs = load_jobs(db, experiment_name)
+                last_successful_job = get_last_successful_job(db, experiment_name)
 
                 # Get a suggestion for the next job
-                suggested_job = get_suggestion(chooser, resource.tasks, db, expt_dir, options, resource_name)
+                suggested_job = get_suggestion(chooser, resource.tasks, db, expt_dir, options, resource_name, last_successful_job)
                 if not suggested_job:
                     print("No more jobs to be run. Exiting the optimizer...")
                     return  # return from main
@@ -332,7 +331,7 @@ def remove_broken_jobs(db, jobs, experiment_name, resources):
 
 # TODO: support decoupling i.e. task_names containing more than one task,
 #       and the chooser must choose between them in addition to choosing X
-def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
+def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name, last_successful_job):
 
     if len(task_names) == 0:
         raise Exception("Error: trying to obtain suggestion for 0 tasks ")
@@ -354,19 +353,30 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
     numMaxJobs = task_options[task_names[0]][u'max-finished-jobs']
     sys.stderr.write('\n%d/%d jobs completed.\n' % (numCompleted, numMaxJobs))
     if numCompleted >= numMaxJobs:
+        sys.stderr.write("Completed %d/%d jobs." % (numCompleted, numMaxJobs))
         return None
 
     # Load the model hypers from the database.
-    hypers = load_hypers(db, experiment_name)
+    #hypers = load_hypers(db, experiment_name)
+    if last_successful_job is None:
+        hypers = None
+    else:
+        hypers = last_successful_job[u'hypers']
 
     # "Fit" the chooser - give the chooser data and let it fit the model.
-    hypers = chooser.fit(task_group, hypers, task_options)
+    new_hypers = chooser.fit(task_group, hypers, task_options)
 
+    # LF: we store the hypers into the job, so it will only get loaded from the last successful job
     # Save the hyperparameters to the database.
-    save_hypers(hypers, db, experiment_name)
+    # save_hypers(hypers, db, experiment_name)
 
     # Ask the chooser to actually pick one.
     suggested_input = chooser.suggest()
+
+    # make sure there is actually a suggestion for the selected task
+    if suggested_input is None:
+        sys.stderr.write("No input suggested by chooser.")
+        return None
 
     # TODO: implelent this
     suggested_task = task_names[0]  
@@ -402,19 +412,33 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name):
         'status'      : 'new',
         'submit time' : time.time(),
         'start time'  : None,
-        'end time'    : None
+        'end time'    : None,
+        'hypers'      : new_hypers
     }
 
     save_job(job, db, experiment_name)
 
     return job
 
-def save_hypers(hypers, db, experiment_name):
-    if hypers:
-        db.save(hypers, experiment_name, 'hypers')
+# def save_hypers(hypers, db, experiment_name):
+#     if hypers:
+#         db.save(hypers, experiment_name, 'hypers')
 
-def load_hypers(db, experiment_name):
-    return db.load(experiment_name, 'hypers')
+# def load_hypers(db, experiment_name):
+#     return db.load(experiment_name, 'hypers')
+
+
+def get_last_successful_job(db, experiment_name):
+    # todo LF: do all of this selecting and sorting directly in the query...
+    jobs = load_jobs(db, experiment_name)
+    completed_jobs = [job for job in jobs if job[u'status'] == u'complete']
+
+    if len(completed_jobs) > 0:
+        sorted(completed_jobs, key=lambda job: job[u'id'])  # sort by id ascending
+        return completed_jobs[-1]  # return the last completed job
+    else:
+        return None
+
 
 def load_jobs(db, experiment_name):
     jobs = db.load(experiment_name, 'jobs')
