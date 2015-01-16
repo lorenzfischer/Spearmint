@@ -379,7 +379,7 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name, la
         return None
 
     # TODO: implelent this
-    suggested_task = task_names[0]  
+    suggested_task = task_names[0]  git
 
     # Parse out the name of the main file (TODO: move this elsewhere)
     if "main-file" in task_options[suggested_task]:
