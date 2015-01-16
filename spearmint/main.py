@@ -351,7 +351,7 @@ def get_suggestion(chooser, task_names, db, expt_dir, options, resource_name, la
         raise RuntimeError("Currently we only support one task") # todo lf: fix this
     numCompleted = len(task_group.inputs)
     numMaxJobs = task_options[task_names[0]][u'max-finished-jobs']
-    sys.stderr.write('\n%d/%d jobs completed.\n' % (numCompleted, numMaxJobs))
+    sys.stderr.write('\n%d/%d jobs of experiment \'%s\' completed.\n' % (numCompleted, numMaxJobs, experiment_name))
     if numCompleted >= numMaxJobs:
         sys.stderr.write("Completed %d/%d jobs." % (numCompleted, numMaxJobs))
         return None
