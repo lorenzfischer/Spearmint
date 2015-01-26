@@ -5,6 +5,7 @@ import numpy          as np
 import numpy.random   as npr
 import scipy.optimize as spo
 import multiprocessing
+import time
 
 from collections import defaultdict
 
@@ -44,38 +45,38 @@ class ParallelBinarySarchChooser(object):
 
         for task_name, task in task_group.tasks.iteritems():
             if len(task.values) == 0 or task_name not in hypers:
-                min = 0.0
-                max = 1.0
+                rangeMin = 0.0
+                rangeMax = 1.0
                 self.nextTry = 0.0  # we try the minimum value first
             else:
-                min = hypers[task_name]['min']
-                max = hypers[task_name]['max']
+                rangeMin = hypers[task_name]['min']
+                rangeMax = hypers[task_name]['max']
 
                 if len(task.values) == 1:  # we only have one data point (min run)
                     # we try the middle next and leave min and max as they are
-                    self.nextTry = min + ((max - min) / 2)
+                    self.nextTry = rangeMin + ((rangeMax - rangeMin) / 2)
                 else:  # if we have more than one data point:
                     # compare the performance measurements:
                     # remember, the bayesian optimizer (default_optimizer) wants to minimize things, so we are looking
                     # for small values here as well. in other words: the smaller the performance value, the better.
-                    oldMax = max(task.values[:-1])
+                    oldMax = min(task.values[:-1])
                     performanceLast = task.values[-1]
 
                     # if it decreased (better performance), we look in the upper half -> set min to old mid
                     # if it increased (worse performance), we look in the lower half -> set max to old mid
-                    old_middle = min + ((max - min) / 2)
+                    old_middle = rangeMin + ((rangeMax - rangeMin) / 2)
                     if performanceLast <= oldMax:  # better performance
-                        min = old_middle
+                        rangeMin = old_middle
                     elif performanceLast > oldMax: # worse performance
-                        max = old_middle
+                        rangeMax = old_middle
 
-                    self.nextTry = min + ((max - min) / 2)
+                    self.nextTry = rangeMin + ((rangeMax - rangeMin) / 2)
 
             # save hyper-parameters for next round
-            new_hypers[task_name] = {'min': min, 'max': max}
+            new_hypers[task_name] = {'min': rangeMin, 'max': rangeMax}
 
             # stopping condition: if min and max are (almost) the same, we stop the evaluation.
-            if (max - min) < 0.001:  # good for ranges up to 10k
+            if (rangeMax - rangeMin) < 0.001:  # good for ranges up to 10k
                 self.nextTry = None
 
         if VERBOSE:
@@ -83,6 +84,8 @@ class ParallelBinarySarchChooser(object):
                 print "max and min are too close, we don't try anything anymore."
             else:
                 print 'Next try using %f' % self.nextTry
+
+        time.sleep(5)  # delays for 5 seconds to give the currently running topo time to shut down
 
         self.isFit = True
         return new_hypers
