@@ -58,15 +58,15 @@ class ParallelBinarySarchChooser(object):
                     # compare the performance measurements:
                     # remember, the bayesian optimizer (default_optimizer) wants to minimize things, so we are looking
                     # for small values here as well. in other words: the smaller the performance value, the better.
-                    performanceOld = task.values[-2]
+                    oldMax = max(task.values[:-1])
                     performanceLast = task.values[-1]
 
                     # if it decreased (better performance), we look in the upper half -> set min to old mid
                     # if it increased (worse performance), we look in the lower half -> set max to old mid
                     old_middle = min + ((max - min) / 2)
-                    if performanceLast <= performanceOld:  # better performance
+                    if performanceLast <= oldMax:  # better performance
                         min = old_middle
-                    elif performanceLast > performanceOld: # worse performance
+                    elif performanceLast > oldMax: # worse performance
                         max = old_middle
 
                     self.nextTry = min + ((max - min) / 2)
