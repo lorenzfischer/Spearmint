@@ -59,18 +59,8 @@ class ParallelLinearDescentChooser(object):
                 lastTry = 0.0
                 self.nextTry = 0.0  # we try the minimum value first
             else:
-                if len(task.values) < 3:
-                    avgImprovement = abs(np.mean(task.values))
-                else:
-                    avgImprovement = abs(np.mean(task.values[-3:]))
-
-                # stopping condition: if the average improvement over the last three steps is negative
-                # we abort.
-                if avgImprovement < 0:
-                    self.nextTry = None
-                else:
-                    lastTry = hypers[task_name]['lastTry']
-                    self.nextTry = lastTry + self.stepDecrease
+                lastTry = hypers[task_name]['lastTry']
+                self.nextTry = lastTry + self.stepDecrease
 
             # save hyper-parameters for next round
             new_hypers[task_name] = {'lastTry': self.nextTry}
