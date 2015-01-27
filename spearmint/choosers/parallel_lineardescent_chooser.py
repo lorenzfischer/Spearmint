@@ -16,14 +16,20 @@ from ..models.abstract_model import function_over_hypers
 from ..                      import models
 
 VERBOSE = False
+DEFAULT_STEPS = 10
 
 def init(options):
-    return ParallelBinarySarchChooser(options)
+    return ParallelLinearDescentChooser(options)
 
+class ParallelLinearDescentChooser(object):
+    """"
+    This optimization strategy of this chooser sets the same value for all parameters to the same value
+    (hence the name parallel) and increases the value of the parameters in each step. The number of steps
+    can be configured in the by setting the the property 'steps' in the 'chooser-args':
 
-class ParallelBinarySarchChooser(object):
-    """"The optimization strategy of this chooser is a parallel binary search, meaning that all parameters will be increased
-        or decreased in parallel, following a binary search approach.
+    "chooser-args": {
+        "steps": 10
+    },
     """
 
     def __init__(self, options):
@@ -31,6 +37,11 @@ class ParallelBinarySarchChooser(object):
         self.isFit = False
         self.nextTry = None
         self.num_dims = None
+        if 'chooser-args' in options:
+            steps = int(options['chooser-args'].get('steps', DEFAULT_STEPS))
+        else:
+            steps = DEFAULT_STEPS
+        self.stepDecrease = 1.0/steps
 
     def fit(self, task_group, hypers=None, options=None):
         self.task_group = task_group
@@ -45,43 +56,28 @@ class ParallelBinarySarchChooser(object):
 
         for task_name, task in task_group.tasks.iteritems():
             if len(task.values) == 0 or task_name not in hypers:
-                rangeMin = 0.0
-                rangeMax = 1.0
+                lastTry = 0.0
                 self.nextTry = 0.0  # we try the minimum value first
             else:
-                rangeMin = hypers[task_name]['min']
-                rangeMax = hypers[task_name]['max']
+                if len(task.values) < 3:
+                    avgImprovement = abs(np.mean(task.values))
+                else:
+                    avgImprovement = abs(np.mean(task.values[-3:]))
 
-                if len(task.values) == 1:  # we only have one data point (min run)
-                    # we try the middle next and leave min and max as they are
-                    self.nextTry = rangeMin + ((rangeMax - rangeMin) / 2)
-                else:  # if we have more than one data point:
-                    # compare the performance measurements:
-                    # remember, the bayesian optimizer (default_optimizer) wants to minimize things, so we are looking
-                    # for small values here as well. in other words: the smaller the performance value, the better.
-                    oldMax = min(task.values[:-1])
-                    performanceLast = task.values[-1]
-
-                    # if it decreased (better performance), we look in the upper half -> set min to old mid
-                    # if it increased (worse performance), we look in the lower half -> set max to old mid
-                    old_middle = rangeMin + ((rangeMax - rangeMin) / 2)
-                    if performanceLast <= oldMax:  # better performance
-                        rangeMin = old_middle
-                    elif performanceLast > oldMax: # worse performance
-                        rangeMax = old_middle
-
-                    self.nextTry = rangeMin + ((rangeMax - rangeMin) / 2)
+                # stopping condition: if the average improvement over the last three steps is negative
+                # we abort.
+                if avgImprovement < 0:
+                    self.nextTry = None
+                else:
+                    lastTry = hypers[task_name]['lastTry']
+                    self.nextTry = lastTry + self.stepDecrease
 
             # save hyper-parameters for next round
-            new_hypers[task_name] = {'min': rangeMin, 'max': rangeMax}
-
-            # stopping condition: if min and max are (almost) the same, we stop the evaluation.
-            if (rangeMax - rangeMin) < 0.001:  # good for ranges up to 10k
-                self.nextTry = None
+            new_hypers[task_name] = {'lastTry': self.nextTry}
 
         if VERBOSE:
             if self.nextTry is None:
-                print "max and min are too close, we don't try anything anymore."
+                print "average improvement over the last three runs is negative."
             else:
                 print 'Next try using %f' % self.nextTry
 
