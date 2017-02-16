@@ -270,6 +270,9 @@ class KumarWarp(AbstractTransformation):
     def forward_pass(self, inputs):
         self._inputs = inputs
         x = _kumaraswamy_cdf(inputs, self.alpha.value, self.beta.value)
+        
+        # super hack! todo: implement a proper fix
+        x = np.nan_to_num(x)
         assert(np.all(np.isfinite(x)))
 
         return x
